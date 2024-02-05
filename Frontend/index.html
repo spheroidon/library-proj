@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login and Register</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+</head>
+
+<body class="container">
+    <div id="loginDiv" style="display: none;">
+        <h1>Login</h1>
+        <form id="loginForm">
+            <label for="loginName">Name:</label>
+            <input type="text" id="loginName" name="loginName" required>
+
+            <label for="loginPassword">Password:</label>
+            <input type="password" id="loginPassword" name="loginPassword" required>
+
+            <button type="button" onclick="login()">Login</button>
+        </form>
+
+        <hr>
+
+        <h1>Register</h1>
+        <form id="registerForm">
+            <label for="registerName">Name:</label>
+            <input type="text" id="registerName" name="registerName" required>
+
+            <label for="registerCity">City:</label>
+            <input type="text" id="registerCity" name="registerCity" required>
+
+            <label for="registerAge">Age:</label>
+            <input type="number" id="registerAge" name="registerAge" required>
+
+            <label for="registerPassword">Password:</label>
+            <input type="password" id="registerPassword" name="registerPassword" required>
+
+            <button type="button" onclick="register()">Register</button>
+        </form>
+    </div>
+
+    <hr>
+
+    <div id="loggedDiv" style="display: none;">
+        <button type="button" onclick="logout()">Logout</button>
+        <button type="button" onclick="delete_account()">Delete Account</button>
+
+        <div id="booksInfo">
+            |<h1>Books</h1>
+            <form id="bookAddForm">
+                <label for="bookTitle">Name:</label>
+                <input type="text" id="bookTitle" name="bookTitle" required>
+
+                <label for="bookAuthor">Author:</label>
+                <input type="text" id="bookAuthor" name="bookAuthor" required>
+
+                <label for="bookYear">Year Published:</label>
+                <input type="number" id="bookYear" name="bookYear" required>
+
+                <label for="bookType">Loan Duration:</label>
+                <select id="bookType" name="bookType" required>
+                    <option value=1>Up to 10 days</option>
+                    <option value=2>Up to 5 days</option>
+                    <option value=3>Up to 2 days</option>
+                </select>
+
+                <button type="button" onclick="add_book()">Add Book</button>
+            </form>
+
+            <input type="text" oninput="load_books()" id="bookSearch" name="bookSearch" required>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Author</th>
+                        <th>Year</th>
+                        <th>Loan Duration</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="bookTable"></tbody>
+            </table>
+        </div>
+
+        <div id="customersInfo">
+            |<h1>Customers</h1>
+            <input type="text" oninput="load_customers()" id="customerSearch" name="customerSearch" required>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>City</th>
+                        <th>Age</th>
+                    </tr>
+                </thead>
+                <tbody id="customerTable"></tbody>
+            </table>
+        </div>
+
+        <div id="loansInfo">
+            |<h1>Loans</h1>
+            <input type="checkbox" onclick="load_loans()" id="loanLate" name="loanLate" required>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Book</th>
+                        <th>Loaned On</th>
+                        <th>Returned On</th>
+                    </tr>
+                </thead>
+                <tbody id="loanTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        const apiUrl = 'http://localhost:5001';  // Replace with your Flask server URL
+        let token = sessionStorage.getItem("accessToken")
+
+        function login() {
+            const loginName = document.getElementById('loginName').value;
+            const loginPassword = document.getElementById('loginPassword').value;
+
+            axios.post(`${apiUrl}/login`, { name: loginName, password: loginPassword })
+                .then(response => {
+                    const accessToken = response.data.access_token;
+                    console.log('Login Successful. Access Token:', accessToken);
+
+                    // Save the access token to session storage
+                    sessionStorage.setItem('accessToken', accessToken);
+                    axios.defaults.headers.common['Authorization'] = accessToken ? `Bearer ${accessToken}` : '';
+
+                    // Show the logout button and hide login/register forms
+                    document.getElementById('loginDiv').style.display = 'none';
+                    document.getElementById('loggedDiv').style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Login Error:', error.response.data.message);
+                });
+        }
+
+        function register() {
+            const registerName = document.getElementById('registerName').value;
+            const registerCity = document.getElementById('registerCity').value;
+            const registerAge = document.getElementById('registerAge').value;
+            const registerPassword = document.getElementById('registerPassword').value;
+
+            axios.post(`${apiUrl}/register`, {
+                name: registerName,
+                city: registerCity,
+                age: registerAge,
+                password: registerPassword
+            })
+                .then(response => {
+                    console.log('Registration Successful:', response.data.message);
+                    // Handle successful registration (e.g., show success message)
+                })
+                .catch(error => {
+                    console.error('Registration Error:', error.response.data.message);
+                    // Handle registration error (e.g., display error message)
+                });
+        }
+
+        function add_book() {
+            const bookTitle = document.getElementById('bookTitle').value;
+            const bookAuthor = document.getElementById('bookAuthor').value;
+            const bookYear = document.getElementById('bookYear').value;
+            const bookType = document.getElementById('bookType').value;
+
+            axios.post(`${apiUrl}/books`, {
+                title: bookTitle,
+                author: bookAuthor,
+                year_published: bookYear,
+                book_type: bookType
+            })
+                .then(response => {
+                    console.log('Book Addition Successful:', response.data.message);
+                })
+                .catch(error => {
+                    console.error('Book Addition Error:', error.response.data.message);
+                });
+        }
+
+        function delete_book(id) {
+            axios.delete(`${apiUrl}/books/${id}`)
+                .then(response => {
+                    console.log('Book Deletion Successful:', response.data.message);
+                })
+                .catch(error => {
+                    console.error('Book Deletion Error:', error.response.data.message);
+                });
+        }
+
+        function loan(id) {
+            axios.post(`${apiUrl}/loans`, { book_id: id })
+                .then(response => {
+                    console.log('Loan Successful:', response.data.message);
+                })
+                .catch(error => {
+                    console.error('Loan Error:', error.response.data.message);
+                });
+        }
+
+        function return_loan(id) {
+            axios.post(`${apiUrl}/loans/${id}`)
+                .then(response => {
+                    console.log('Return Successful:', response.data.message);
+                })
+                .catch(error => {
+                    console.error('Return Error:', error.response.data.message);
+                });
+        }
+
+        function create_book_item(book, table) {
+            if (book != null) {
+                const row = table.insertRow()
+                row.insertCell(0).textContent = book.title
+                row.insertCell(1).textContent = book.author
+                row.insertCell(2).textContent = book.year_published
+                if (book.book_type == 1) {
+                    row.insertCell(3).textContent = "Up to 10 days"
+                } else if (book.book_type == 2) {
+                    row.insertCell(3).textContent = "Up to 5 days"
+                } else if (book.book_type == 3) {
+                    row.insertCell(3).textContent = "Up to 2 days"
+                }
+                html_buttons = `<button onclick="delete_book(${book.id})">Delete</button>`
+                if (!book.is_loaned) {
+                    html_buttons += `<button onclick="loan(${book.id})">Loan</button>`
+                }
+                row.insertCell(4).innerHTML = html_buttons
+            }
+        }
+
+        function load_books() {
+            bookSearch = document.getElementById('bookSearch')
+            if (bookSearch.value == "") {
+                axios.get(`${apiUrl}/books`)
+                    .then(response => {
+                        const books = response.data
+                        const table = document.getElementById('bookTable')
+                        table.innerHTML = ''
+
+                        books.forEach(book => {
+                            create_book_item(book, table)
+                        });
+                    }).catch(error => console.error(error));
+            } else {
+                axios.get(`${apiUrl}/search-books/${bookSearch.value}`)
+                    .then(response => {
+                        const books = response.data
+                        const table = document.getElementById('bookTable')
+                        table.innerHTML = ''
+
+                        books.forEach(book => {
+                            create_book_item(book, table)
+                        });
+                    }).catch(error => console.error(error));
+            }
+        }
+
+        function create_loan_item(loan, table) {
+            if (loan != null) {
+                const row = table.insertRow()
+                row.insertCell(0).textContent = loan.cust_name
+                row.insertCell(1).textContent = loan.book_title
+                row.insertCell(2).textContent = loan.loan_date
+                if (loan.return_date) {
+                    row.insertCell(3).textContent = loan.return_date
+                } else {
+                    row.insertCell(3).innerHTML = `<button onclick="return_loan(${loan.id})">Return</button>`
+                }
+            }
+        }
+
+        function load_loans() {
+            checked = document.getElementById("loanLate").checked
+            if(!checked) {
+                axios.get(`${apiUrl}/loans`)
+                .then(response => {
+                    const loans = response.data
+                    const table = document.getElementById('loanTable')
+                    table.innerHTML = ''
+
+                    loans.forEach(loan => {
+                        create_loan_item(loan,table)
+                    });
+                }).catch(error => console.error(error));
+            } else {
+                axios.get(`${apiUrl}/late-loans`)
+                .then(response => {
+                    const loans = response.data
+                    const table = document.getElementById('loanTable')
+                    table.innerHTML = ''
+
+                    loans.forEach(loan => {
+                        create_loan_item(loan,table)
+                    });
+                }).catch(error => console.error(error));
+            }
+        }
+
+        function load_customers() {
+            customerSearch = document.getElementById('customerSearch')
+            if (customerSearch.value == "") {
+                axios.get(`${apiUrl}/customers`)
+                    .then(response => {
+                        const customers = response.data
+                        const table = document.getElementById('customerTable')
+                        table.innerHTML = ''
+
+                        customers.forEach(customer => {
+                            if (customer != null) {
+                                const row = table.insertRow()
+                                row.insertCell(0).textContent = customer.name
+                                row.insertCell(1).textContent = customer.city
+                                row.insertCell(2).textContent = customer.age
+                            }
+                        });
+                    }).catch(error => console.error(error));
+            } else {
+                axios.get(`${apiUrl}/search-customers/${customerSearch.value}`)
+                    .then(response => {
+                        const customers = response.data
+                        const table = document.getElementById('bookTable')
+                        table.innerHTML = ''
+
+                        customers.forEach(customer => {
+                            if (customer != null) {
+                                const row = table.insertRow()
+                                row.insertCell(0).textContent = customer.name
+                                row.insertCell(1).textContent = customer.city
+                                row.insertCell(2).textContent = customer.age
+                            }
+                        });
+                    }).catch(error => console.error(error));
+            }
+        }
+
+        function delete_account() {
+            axios.post(`${apiUrl}/delete-account`)
+                .then(response => {
+                    console.log('Account Deletion Successful:', response.data.message);
+                    logout()
+                })
+                .catch(error => {
+                    console.error('Account Deletion Error:', error.response.data.message);
+                });
+        }
+
+        function logout() {
+            token = null
+            sessionStorage.removeItem('accessToken');
+            axios.defaults.headers.common['Authorization'] = token ? `Bearer ${token}` : '';
+
+            // Show the login/register forms and hide the logout button
+            document.getElementById('loginDiv').style.display = 'block';
+            document.getElementById('loggedDiv').style.display = 'none';
+        }
+
+        if (token) {
+            document.getElementById('loginDiv').style.display = 'none';
+            document.getElementById('loggedDiv').style.display = 'block';
+            axios.defaults.headers.common['Authorization'] = token ? `Bearer ${token}` : '';
+        } else {
+            document.getElementById('loginDiv').style.display = 'block';
+            document.getElementById('loggedDiv').style.display = 'none';
+        }
+
+        load_books()
+        load_customers()
+        load_loans()
+    </script>
+
+</body>
+
+</html>
